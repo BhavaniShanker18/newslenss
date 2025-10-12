@@ -28,6 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Chatbot } from "@/components/Chatbot";
 
 interface AnalysisResult {
   verdict: "fake" | "real";
@@ -70,9 +71,13 @@ const Index = () => {
     await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1500));
 
     // Mock ML prediction logic
-    const isFake = mockPrediction(text);
-    const confidence = 75 + Math.random() * 23; // 75-98%
-    const credibility = isFake ? 20 + Math.random() * 30 : 70 + Math.random() * 30;
+    const { isFake, fakeScore, realScore, foundIndicators } = mockPrediction(text);
+    
+    const totalScore = fakeScore + realScore;
+    let confidence = totalScore > 0 ? ((isFake ? fakeScore : realScore) / totalScore) * 100 : 65;
+    confidence = Math.max(65, Math.min(98, confidence)); // Clamp between 65-98%
+    
+    const credibility = isFake ? Math.max(15, 100 - confidence) : confidence;
 
     const words = text.trim().split(/\s+/).length;
     const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
@@ -82,9 +87,9 @@ const Index = () => {
       confidence: Math.round(confidence * 10) / 10,
       credibility: Math.round(credibility),
       riskLevel: credibility < 40 ? "high" : credibility < 70 ? "medium" : "low",
-      indicators: isFake
-        ? ["Sensational language", "Lack of sources", "Emotional manipulation", "Unverified claims"]
-        : ["Credible sources cited", "Balanced reporting", "Fact-based analysis", "Expert quotes"],
+      indicators: foundIndicators.length > 0 ? foundIndicators : isFake
+        ? ["Sensational language", "Lack of sources"]
+        : ["Professional tone", "Factual content"],
       stats: {
         wordCount: words,
         sentenceCount: sentences,
@@ -92,12 +97,12 @@ const Index = () => {
       },
       warnings: isFake
         ? [
-            "Multiple red flags detected in content structure",
+            `Multiple red flags detected (Fake Score: ${fakeScore}, Real Score: ${realScore})`,
             "Language patterns match known disinformation campaigns",
             "Lacks verifiable source attribution",
           ]
         : [
-            "Content structure appears credible",
+            `Content structure appears credible (Real Score: ${realScore}, Fake Score: ${fakeScore})`,
             "Professional journalistic standards observed",
             "Sources can be independently verified",
           ],
@@ -113,37 +118,64 @@ const Index = () => {
     }, 100);
   };
 
-  const mockPrediction = (text: string): boolean => {
-    const fakeKeywords = [
-      "breaking",
-      "shocking",
-      "miracle",
-      "secret",
-      "they don't want you to know",
-      "share before",
-      "hidden by",
-      "immortal",
-      "cure",
-      "conspiracy",
-    ];
-
-    const realKeywords = [
-      "study",
-      "research",
-      "university",
-      "published",
-      "according to",
-      "peer-reviewed",
-      "scientists",
-      "data",
-      "findings",
-    ];
-
+  const mockPrediction = (text: string): { isFake: boolean; fakeScore: number; realScore: number; foundIndicators: string[] } => {
     const lowerText = text.toLowerCase();
-    const fakeScore = fakeKeywords.filter((k) => lowerText.includes(k)).length;
-    const realScore = realKeywords.filter((k) => lowerText.includes(k)).length;
+    const upperCount = (text.match(/[A-Z]{3,}/g) || []).length;
+    
+    const fakeIndicators = [
+      { pattern: /(breaking|shocking|scientists don't want you to know)/i, name: "Sensational language", weight: 10 },
+      { pattern: /(cover-up|big pharma|mainstream media hiding|they don't want you to know|secret|leaked documents)/i, name: "Conspiracy keywords", weight: 10 },
+      { pattern: /(anonymous sources|insider reveals|whistleblower|sources say|unnamed official)/i, name: "Anonymous sources", weight: 10 },
+      { pattern: /(share before deleted|act now|they're trying to censor|before it's too late)/i, name: "Urgency manipulation", weight: 10 },
+      { pattern: /(100% cure|miracle|destroys all|secret government|mind control|microchip)/i, name: "Extreme claims", weight: 10 },
+      { pattern: /(experts say|some say|many believe|it is said)/i, name: "Vague attributions", weight: 10 },
+      { pattern: /(you won't believe|shocking truth|they're hiding)/i, name: "Emotional manipulation", weight: 10 },
+      { pattern: /(bleach|miracle cure|anti-vaccine|dangerous health)/i, name: "Medical misinformation", weight: 10 },
+      { pattern: /(99% of|100% of|all doctors|every scientist)/i, name: "Unverifiable statistics", weight: 10 },
+      { pattern: /(without consulting|don't trust authorities|ignore experts)/i, name: "Bypass experts", weight: 10 },
+    ];
 
-    return fakeScore > realScore;
+    const realIndicators = [
+      { pattern: /(dr\.|professor|phd|researcher at [a-z\s]+university)/i, name: "Specific credentials", weight: 8 },
+      { pattern: /(university|institute|agency|published in|journal of)/i, name: "Credible institutions", weight: 8 },
+      { pattern: /(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december)/i, name: "Specific dates/locations", weight: 8 },
+      { pattern: /(study|research|data|statistics|peer-reviewed|findings)/i, name: "Verifiable facts", weight: 8 },
+      { pattern: /(according to|stated|confirmed|announced)/i, name: "Balanced reporting", weight: 8 },
+      { pattern: /[A-Z][a-z]+\s[A-Z][a-z]+,\s(CEO|director|professor|researcher)/i, name: "Named sources", weight: 8 },
+    ];
+
+    let fakeScore = 0;
+    let realScore = 0;
+    const foundIndicators: string[] = [];
+
+    // Check fake indicators
+    fakeIndicators.forEach(({ pattern, name, weight }) => {
+      if (pattern.test(text)) {
+        fakeScore += weight;
+        foundIndicators.push(name);
+      }
+    });
+
+    // Add points for excessive caps
+    if (upperCount >= 3) {
+      fakeScore += 10;
+      foundIndicators.push("Excessive ALL CAPS");
+    }
+
+    // Check real indicators
+    realIndicators.forEach(({ pattern, name, weight }) => {
+      if (pattern.test(text)) {
+        realScore += weight;
+        foundIndicators.push(name);
+      }
+    });
+
+    return {
+      isFake: fakeScore > realScore,
+      fakeScore,
+      realScore,
+      foundIndicators
+    };
   };
 
   const handleCopy = () => {
@@ -159,9 +191,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-bg">
+    <div className="min-h-screen gradient-bg particles-bg">
+      <Chatbot />
+      
       {/* Header */}
-      <header className="border-b border-white/10 backdrop-blur-lg bg-white/5">
+      <header className="border-b border-white/10 backdrop-blur-lg bg-white/5 animate-fade-in">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -187,8 +221,8 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         {/* Stats Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12 animate-fade-in">
-          <Card className="glass p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12 animate-fade-in-up">
+          <Card className="glass p-6 hover:scale-105 transition-transform duration-300 hover:glow-primary">
             <div className="flex items-center gap-3">
               <Activity className="w-8 h-8 text-accent" />
               <div>
@@ -197,7 +231,7 @@ const Index = () => {
               </div>
             </div>
           </Card>
-          <Card className="glass p-6">
+          <Card className="glass p-6 hover:scale-105 transition-transform duration-300 hover:glow-success">
             <div className="flex items-center gap-3">
               <TrendingUp className="w-8 h-8 text-success" />
               <div>
@@ -206,7 +240,7 @@ const Index = () => {
               </div>
             </div>
           </Card>
-          <Card className="glass p-6">
+          <Card className="glass p-6 hover:scale-105 transition-transform duration-300 hover:glow-accent">
             <div className="flex items-center gap-3">
               <Clock className="w-8 h-8 text-secondary" />
               <div>
@@ -229,7 +263,7 @@ const Index = () => {
                 placeholder="Paste your news article here to verify its authenticity..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="min-h-[200px] bg-input/50 border-white/20 focus:border-accent resize-none text-base"
+                className="min-h-[200px] bg-input/50 border-white/20 focus:border-accent focus:glow-primary resize-none text-base transition-all duration-300"
               />
               <div className="flex justify-between items-center mt-2">
                 <p className="text-sm text-muted-foreground">{text.length} characters</p>
@@ -263,7 +297,7 @@ const Index = () => {
               size="lg"
               onClick={analyzeText}
               disabled={isAnalyzing || text.trim().length < 50}
-              className="w-full text-lg font-semibold"
+              className="w-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl glow-primary"
             >
               {isAnalyzing ? (
                 <>
@@ -282,7 +316,7 @@ const Index = () => {
 
         {/* Results Section */}
         {result && (
-          <div id="results" className="space-y-6 animate-fade-in">
+          <div id="results" className="space-y-6 animate-bounce-in">
             {/* Main Result Card */}
             <Card
               className={`glass p-8 border-2 ${
@@ -346,8 +380,8 @@ const Index = () => {
             </Card>
 
             {/* Insights Panel */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="glass p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
+              <Card className="glass p-6 hover:scale-105 transition-transform duration-300">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-accent" />
                   Text Statistics
@@ -368,10 +402,10 @@ const Index = () => {
                 </div>
               </Card>
 
-              <Card className="glass p-6">
+              <Card className="glass p-6 hover:scale-105 transition-transform duration-300">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <Zap className="w-5 h-5 text-accent" />
-                  Key Indicators
+                  Key Indicators Found
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {result.indicators.map((indicator, index) => (
@@ -452,24 +486,24 @@ const Index = () => {
         </Card>
 
         {/* Technology Stack */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="glass p-6 text-center hover:scale-105 transition-transform">
-            <Database className="w-8 h-8 text-primary mx-auto mb-2" />
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in-up">
+          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow-primary">
+            <Database className="w-8 h-8 text-primary mx-auto mb-2 animate-pulse" />
             <p className="font-semibold">Big Data</p>
             <p className="text-xs text-muted-foreground mt-1">100K+ Articles</p>
           </Card>
-          <Card className="glass p-6 text-center hover:scale-105 transition-transform">
-            <Brain className="w-8 h-8 text-accent mx-auto mb-2" />
+          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow-accent">
+            <Brain className="w-8 h-8 text-accent mx-auto mb-2 animate-pulse" />
             <p className="font-semibold">Deep Learning</p>
             <p className="text-xs text-muted-foreground mt-1">Neural Networks</p>
           </Card>
-          <Card className="glass p-6 text-center hover:scale-105 transition-transform">
-            <Zap className="w-8 h-8 text-secondary mx-auto mb-2" />
+          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow">
+            <Zap className="w-8 h-8 text-secondary mx-auto mb-2 animate-pulse" />
             <p className="font-semibold">Real-time</p>
             <p className="text-xs text-muted-foreground mt-1">Instant Analysis</p>
           </Card>
-          <Card className="glass p-6 text-center hover:scale-105 transition-transform">
-            <TrendingUp className="w-8 h-8 text-success mx-auto mb-2" />
+          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow-success">
+            <TrendingUp className="w-8 h-8 text-success mx-auto mb-2 animate-pulse" />
             <p className="font-semibold">High Accuracy</p>
             <p className="text-xs text-muted-foreground mt-1">94.5% Success</p>
           </Card>

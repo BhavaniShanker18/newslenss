@@ -8,41 +8,46 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 221 83% 10%;
+    --background: 230 35% 7%;
     --foreground: 210 40% 98%;
 
-    --card: 221 83% 15%;
+    --card: 230 30% 12%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 221 83% 12%;
+    --popover: 230 35% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 221 83% 53%;
+    --primary: 189 100% 50%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 256 80% 58%;
+    --secondary: 270 60% 70%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 221 40% 25%;
+    --muted: 230 20% 25%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 189 94% 43%;
+    --accent: 330 80% 60%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 72% 60%;
+    --destructive: 348 83% 60%;
     --destructive-foreground: 210 40% 98%;
 
     --success: 160 84% 39%;
     --success-foreground: 210 40% 98%;
 
-    --border: 221 40% 25%;
-    --input: 221 40% 20%;
-    --ring: 189 94% 43%;
+    --border: 230 30% 18%;
+    --input: 230 30% 15%;
+    --ring: 189 100% 50%;
 
     --radius: 0.75rem;
 
-    --gradient-start: 221 83% 15%;
-    --gradient-end: 256 80% 20%;
+    --gradient-start: 230 35% 7%;
+    --gradient-mid: 240 40% 15%;
+    --gradient-end: 270 35% 20%;
+
+    --neon-cyan: 189 100% 50%;
+    --electric-purple: 270 60% 70%;
+    --vibrant-pink: 330 80% 60%;
   }
 }
 
@@ -56,23 +61,67 @@ All colors MUST be HSL.
   }
 
   .gradient-bg {
-    background: linear-gradient(135deg, hsl(var(--gradient-start)) 0%, hsl(var(--gradient-end)) 100%);
+    background: linear-gradient(135deg, hsl(var(--gradient-start)) 0%, hsl(var(--gradient-mid)) 50%, hsl(var(--gradient-end)) 100%);
+    animation: gradient-shift 15s ease infinite;
+    background-size: 200% 200%;
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
   }
 
   .gradient-text {
     @apply bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent;
+    animation: gradient-flow 8s ease infinite;
+    background-size: 200% auto;
+  }
+
+  @keyframes gradient-flow {
+    0%, 100% { background-position: 0% center; }
+    50% { background-position: 100% center; }
   }
 
   .glow {
-    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+    box-shadow: 0 0 30px hsl(var(--neon-cyan) / 0.5), 0 0 60px hsl(var(--neon-cyan) / 0.3);
   }
 
   .glow-success {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 30px hsl(var(--success) / 0.5), 0 0 60px hsl(var(--success) / 0.3);
   }
 
   .glow-danger {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 30px hsl(var(--destructive) / 0.5), 0 0 60px hsl(var(--destructive) / 0.3);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.5), 0 0 60px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 30px hsl(var(--accent) / 0.5), 0 0 60px hsl(var(--accent) / 0.3);
+  }
+
+  .floating {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  .particles-bg {
+    background-image: 
+      radial-gradient(circle at 20% 50%, hsl(var(--neon-cyan) / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(var(--electric-purple) / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 40% 20%, hsl(var(--vibrant-pink) / 0.1) 0%, transparent 50%);
+    animation: particle-float 20s ease infinite;
+  }
+
+  @keyframes particle-float {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
   }
 }
 
