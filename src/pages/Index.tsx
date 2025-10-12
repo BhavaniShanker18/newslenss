@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Chatbot } from "@/components/Chatbot";
+import { LottieAnimation } from "@/components/LottieAnimation";
 
 interface AnalysisResult {
   verdict: "fake" | "real";
@@ -195,15 +196,21 @@ const Index = () => {
       <Chatbot />
       
       {/* Header */}
-      <header className="border-b border-white/10 backdrop-blur-lg bg-white/5 animate-fade-in">
-        <div className="container mx-auto px-4 py-6">
+      <header className="border-b border-white/10 backdrop-blur-lg bg-white/5 animate-fade-in relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/5 animate-pulse-slow" />
+        <div className="container mx-auto px-4 py-6 relative z-10">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold gradient-text flex items-center gap-2">
-                <Sparkles className="w-8 h-8 text-accent" />
-                Fake News Detector
-              </h1>
-              <p className="text-muted-foreground mt-1">AI-Powered Truth Verification</p>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Sparkles className="w-8 h-8 text-accent animate-pulse" />
+                <div className="absolute inset-0 blur-xl bg-accent/50 animate-pulse" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold gradient-text">
+                  Fake News Detector
+                </h1>
+                <p className="text-muted-foreground mt-1">AI-Powered Truth Verification</p>
+              </div>
             </div>
             <Button variant="glass" size="icon" asChild>
               <a
@@ -297,19 +304,22 @@ const Index = () => {
               size="lg"
               onClick={analyzeText}
               disabled={isAnalyzing || text.trim().length < 50}
-              className="w-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl glow-primary"
+              className="w-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl glow-primary relative overflow-hidden group"
             >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Brain className="w-5 h-5" />
-                  Analyze News Article
-                </>
-              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient-flow opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative z-10 flex items-center gap-2 justify-center">
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-5 h-5" />
+                    Analyze News Article
+                  </>
+                )}
+              </span>
             </Button>
           </div>
         </Card>

@@ -253,12 +253,12 @@ export const Chatbot = () => {
 
   return (
     <Card
-      className={`fixed bottom-6 right-6 glass border-2 border-primary/30 shadow-2xl z-50 transition-all duration-300 ${
+      className={`fixed bottom-6 right-6 border-2 border-primary/50 shadow-2xl z-50 transition-all duration-300 bg-card/95 backdrop-blur-2xl ${
         isMinimized ? "h-16 w-80" : "h-[600px] w-96"
-      } animate-slide-in-bottom`}
+      } animate-slide-in-bottom chatbot-glow`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-primary/20 to-accent/20">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-primary/30 to-accent/30 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
           <h3 className="font-semibold">AI News Assistant</h3>
@@ -281,7 +281,7 @@ export const Chatbot = () => {
       {!isMinimized && (
         <>
           {/* Messages */}
-          <ScrollArea className="h-[420px] p-4" ref={scrollRef}>
+          <ScrollArea className="h-[420px] p-4 bg-background/30" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -289,13 +289,13 @@ export const Chatbot = () => {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2 ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-2 shadow-lg ${
                       message.role === "user"
-                        ? "bg-gradient-to-r from-primary to-accent text-white"
-                        : "bg-white/10 backdrop-blur-md border border-white/20"
+                        ? "bg-gradient-to-r from-primary to-accent text-white message-glow"
+                        : "bg-card/90 backdrop-blur-md border border-white/30 text-foreground"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-line">{message.content}</p>
+                    <p className="text-sm whitespace-pre-line leading-relaxed">{message.content}</p>
                     <p className="text-xs opacity-60 mt-1">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",
@@ -308,7 +308,7 @@ export const Chatbot = () => {
 
               {isTyping && (
                 <div className="flex justify-start animate-fade-in">
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2">
+                  <div className="bg-card/90 backdrop-blur-md border border-white/30 rounded-2xl px-4 py-2">
                     <div className="flex gap-1">
                       <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
                       <span
@@ -342,19 +342,19 @@ export const Chatbot = () => {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-white/10 bg-background/50">
+          <div className="p-4 border-t border-white/10 bg-card/50 backdrop-blur-sm">
             <div className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSend()}
                 placeholder="Ask me anything..."
-                className="bg-white/10 border-white/20 focus:border-primary"
+                className="bg-background/70 border-white/30 focus:border-primary text-foreground placeholder:text-muted-foreground"
               />
               <Button
                 onClick={handleSend}
                 size="icon"
-                className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                className="bg-gradient-to-r from-primary to-accent hover:opacity-90 hover:scale-105 transition-transform message-glow"
                 disabled={!input.trim()}
               >
                 <Send className="w-4 h-4" />
