@@ -26,10 +26,14 @@ import {
   Database,
   Brain,
   Zap,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Chatbot } from "@/components/Chatbot";
 import { LottieAnimation } from "@/components/LottieAnimation";
+import { supabase } from "@/integrations/supabase/client";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 interface AnalysisResult {
   verdict: "fake" | "real";
@@ -37,7 +41,8 @@ interface AnalysisResult {
   credibility: number;
   riskLevel: "high" | "medium" | "low";
   indicators: string[];
-  stats: {
+  explanation?: string;
+  stats?: {
     wordCount: number;
     sentenceCount: number;
     avgSentenceLength: number;
@@ -58,6 +63,7 @@ const Index = () => {
     analyzed: 1247,
     accuracy: 94.5,
   });
+  const { speak, stop, isSpeaking, isSupported } = useTextToSpeech();
 
   const analyzeText = async () => {
     if (text.trim().length < 50) {
@@ -68,136 +74,50 @@ const Index = () => {
     setIsAnalyzing(true);
     setResult(null);
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1500));
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-news', {
+        body: { text }
+      });
 
-    // Mock ML prediction logic
-    const { isFake, fakeScore, realScore, foundIndicators } = mockPrediction(text);
-    
-    const totalScore = fakeScore + realScore;
-    let confidence = totalScore > 0 ? ((isFake ? fakeScore : realScore) / totalScore) * 100 : 65;
-    confidence = Math.max(65, Math.min(98, confidence)); // Clamp between 65-98%
-    
-    const credibility = isFake ? Math.max(15, 100 - confidence) : confidence;
+      if (error) throw error;
 
-    const words = text.trim().split(/\s+/).length;
-    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
+      // Add stats calculation
+      const words = text.trim().split(/\s+/).length;
+      const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
+      
+      const resultWithStats: AnalysisResult = {
+        ...data,
+        stats: {
+          wordCount: words,
+          sentenceCount: sentences,
+          avgSentenceLength: Math.round((words / sentences) * 10) / 10,
+        }
+      };
 
-    const mockResult: AnalysisResult = {
-      verdict: isFake ? "fake" : "real",
-      confidence: Math.round(confidence * 10) / 10,
-      credibility: Math.round(credibility),
-      riskLevel: credibility < 40 ? "high" : credibility < 70 ? "medium" : "low",
-      indicators: foundIndicators.length > 0 ? foundIndicators : isFake
-        ? ["Sensational language", "Lack of sources"]
-        : ["Professional tone", "Factual content"],
-      stats: {
-        wordCount: words,
-        sentenceCount: sentences,
-        avgSentenceLength: Math.round((words / sentences) * 10) / 10,
-      },
-      warnings: isFake
-        ? [
-            `Multiple red flags detected (Fake Score: ${fakeScore}, Real Score: ${realScore})`,
-            "Language patterns match known disinformation campaigns",
-            "Lacks verifiable source attribution",
-          ]
-        : [
-            `Content structure appears credible (Real Score: ${realScore}, Fake Score: ${fakeScore})`,
-            "Professional journalistic standards observed",
-            "Sources can be independently verified",
-          ],
-    };
+      setResult(resultWithStats);
+      setStatsCounter((prev) => ({ ...prev, analyzed: prev.analyzed + 1 }));
 
-    setResult(mockResult);
-    setIsAnalyzing(false);
-    setStatsCounter((prev) => ({ ...prev, analyzed: prev.analyzed + 1 }));
+      // Speak the result
+      if (isSupported && data.explanation) {
+        const verdictText = data.verdict === 'fake' ? 'fake news' : 'real news';
+        const speechText = `Analysis complete. This article appears to be ${verdictText} with ${data.confidence} percent confidence. ${data.explanation}`;
+        speak(speechText);
+      }
 
-    // Scroll to results
-    setTimeout(() => {
-      document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+      // Scroll to results
+      setTimeout(() => {
+        document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+
+      toast.success(`Analysis complete: ${data.verdict === 'fake' ? 'FAKE' : 'REAL'} news detected`);
+    } catch (error: any) {
+      console.error('Analysis error:', error);
+      toast.error(error.message || "Failed to analyze the article. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const mockPrediction = (text: string): { isFake: boolean; fakeScore: number; realScore: number; foundIndicators: string[] } => {
-    const lowerText = text.toLowerCase();
-    const upperCount = (text.match(/[A-Z]{3,}/g) || []).length;
-    
-    // Enhanced fake news indicators with weighted scoring
-    const fakeIndicators = [
-      { pattern: /(breaking|shocking|scientists don't want you to know|unbelievable|you won't believe|bombshell|explosive|jaw-dropping)/i, name: "⚠️ Sensational Language", weight: 12 },
-      { pattern: /(cover-up|big pharma|mainstream media hiding|they don't want you to know|secret|leaked documents|conspiracy|elite|cabal|deep state)/i, name: "⚠️ Conspiracy Keywords", weight: 15 },
-      { pattern: /(anonymous sources?|insider reveals?|whistleblower|sources? say|unnamed official|secret informant)/i, name: "⚠️ Anonymous Sources", weight: 13 },
-      { pattern: /(share before deleted|act now|they're trying to censor|before it's too late|hurry|limited time|going viral|must share)/i, name: "⚠️ Urgency Manipulation", weight: 14 },
-      { pattern: /(100% cure|miracle|destroys? all|secret government|mind control|microchip|never before seen|guaranteed|absolute)/i, name: "⚠️ Extreme Claims", weight: 16 },
-      { pattern: /(experts? say|studies? show|doctors? recommend|scientists? claim)(?!\s+([A-Z][a-z]+\s+){1,2}(at|from))/i, name: "⚠️ Vague Sources", weight: 11 },
-      { pattern: /(terrifying|outrageous|shocking|insane|devastating|horrifying|disgusting|appalling|criminal)/i, name: "⚠️ Emotional Manipulation", weight: 10 },
-      { pattern: /(bleach|drink urine|cure cancer|anti-vax|vaccine causes|big pharma conspiracy|natural cure all|detox cures)/i, name: "⚠️ Medical Misinformation", weight: 18 },
-      { pattern: /(99% of|all doctors|every scientist|nobody knows|they won't tell you)/i, name: "⚠️ Unverifiable Statistics", weight: 13 },
-      { pattern: /(without consulting|don't trust doctors|ignore experts|avoid hospitals|mainstream lies|do your own research)/i, name: "⚠️ Bypass Authorities", weight: 14 },
-    ];
-
-    // Enhanced real news indicators
-    const realIndicators = [
-      { pattern: /(Dr\.|Professor|PhD|researcher at [a-z\s]+|lead scientist|Chief|Director)\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i, name: "✓ Named Credentials", weight: 12 },
-      { pattern: /(University of|Harvard|Stanford|MIT|Johns Hopkins|Oxford|Cambridge|CDC|WHO|FDA|NIH|Reuters|Associated Press|New York Times|BBC|Nature|Science|JAMA)/i, name: "✓ Credible Institutions", weight: 14 },
-      { pattern: /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(st|nd|rd|th)?,?\s+\d{4}/i, name: "✓ Specific Dates", weight: 10 },
-      { pattern: /(published in|journal of|peer-reviewed|clinical trial|research paper|academic study|scientific method)/i, name: "✓ Academic Publications", weight: 15 },
-      { pattern: /(however|although|while|on the other hand|research suggests|evidence indicates|data shows|according to|preliminary findings)/i, name: "✓ Balanced Language", weight: 9 },
-      { pattern: /(in\s+[A-Z][a-z]+,\s+[A-Z][a-z]+|at\s+[A-Z][a-z]+\s+University|in\s+the\s+[A-Z][a-z]+\s+(region|area|city))/i, name: "✓ Specific Locations", weight: 8 },
-      { pattern: /(\d+\s+(participants|patients|subjects|respondents)|conducted|analyzed|measured|compared|randomized|controlled|sample size|methodology)/i, name: "✓ Scientific Methodology", weight: 13 },
-      { pattern: /(cited|referenced|quoted|stated|confirmed|verified|according to official)/i, name: "✓ Proper Citations", weight: 10 },
-    ];
-
-    let fakeScore = 0;
-    let realScore = 0;
-    const foundIndicators: string[] = [];
-
-    // Check fake indicators
-    fakeIndicators.forEach(({ pattern, name, weight }) => {
-      if (pattern.test(text)) {
-        fakeScore += weight;
-        foundIndicators.push(name);
-      }
-    });
-
-    // Add points for excessive caps
-    if (upperCount >= 3) {
-      fakeScore += 12;
-      foundIndicators.push("⚠️ Excessive ALL CAPS");
-    }
-
-    // Check real indicators
-    realIndicators.forEach(({ pattern, name, weight }) => {
-      if (pattern.test(text)) {
-        realScore += weight;
-        foundIndicators.push(name);
-      }
-    });
-
-    // Additional quality checks
-    const wordCount = text.split(/\s+/).length;
-    const sentenceCount = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-    const avgSentenceLength = wordCount / Math.max(sentenceCount, 1);
-
-    // Bonus for reasonable article length (150-5000 words)
-    if (wordCount > 150 && wordCount < 5000) {
-      realScore += 10;
-    }
-
-    // Penalty for very short or very long sentences (common in fake news)
-    if (avgSentenceLength < 5 || avgSentenceLength > 40) {
-      fakeScore += 8;
-      foundIndicators.push("⚠️ Unusual Sentence Structure");
-    }
-
-    return {
-      isFake: fakeScore > realScore,
-      fakeScore,
-      realScore,
-      foundIndicators: foundIndicators.slice(0, 8) // Limit to 8 most relevant indicators
-    };
-  };
 
   const handleCopy = () => {
     if (result) {
@@ -384,7 +304,7 @@ const Index = () => {
                     ) : (
                       <ShieldCheck className="w-12 h-12 text-success" />
                     )}
-                    <div>
+                    <div className="flex items-center gap-3">
                       <Badge
                         variant={result.verdict === "fake" ? "destructive" : "default"}
                         className={`text-lg px-4 py-1 ${
@@ -393,11 +313,39 @@ const Index = () => {
                       >
                         {result.verdict === "fake" ? "⚠️ FAKE NEWS" : "✓ REAL NEWS"}
                       </Badge>
+                      {isSupported && result.explanation && (
+                        <Button
+                          onClick={() => {
+                            if (isSpeaking) {
+                              stop();
+                            } else {
+                              const verdictText = result.verdict === 'fake' ? 'fake news' : 'real news';
+                              speak(`This article appears to be ${verdictText} with ${result.confidence} percent confidence. ${result.explanation}`);
+                            }
+                          }}
+                          variant="glass"
+                          size="sm"
+                          className="hover:scale-110 transition-transform"
+                        >
+                          {isSpeaking ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
+                          {isSpeaking ? 'Stop' : 'Listen'}
+                        </Button>
+                      )}
                       <p className="text-sm text-muted-foreground mt-2">
                         Risk Level: <span className="font-semibold capitalize">{result.riskLevel}</span>
                       </p>
                     </div>
                   </div>
+
+                  {result.explanation && (
+                    <div className="mt-4 p-4 bg-card/50 border border-white/10 rounded-xl">
+                      <h4 className="font-semibold mb-2 text-primary flex items-center gap-2">
+                        <Brain className="w-4 h-4" />
+                        AI Analysis:
+                      </h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{result.explanation}</p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4 mt-6">
                     <div>
@@ -440,18 +388,22 @@ const Index = () => {
                   Text Statistics
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Word Count</span>
-                    <span className="font-semibold">{result.stats.wordCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sentence Count</span>
-                    <span className="font-semibold">{result.stats.sentenceCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Avg Sentence Length</span>
-                    <span className="font-semibold">{result.stats.avgSentenceLength} words</span>
-                  </div>
+                  {result.stats && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Word Count</span>
+                        <span className="font-semibold">{result.stats.wordCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sentence Count</span>
+                        <span className="font-semibold">{result.stats.sentenceCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Avg Sentence Length</span>
+                        <span className="font-semibold">{result.stats.avgSentenceLength} words</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </Card>
 
