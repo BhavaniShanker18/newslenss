@@ -123,26 +123,30 @@ const Index = () => {
     const lowerText = text.toLowerCase();
     const upperCount = (text.match(/[A-Z]{3,}/g) || []).length;
     
+    // Enhanced fake news indicators with weighted scoring
     const fakeIndicators = [
-      { pattern: /(breaking|shocking|scientists don't want you to know)/i, name: "Sensational language", weight: 10 },
-      { pattern: /(cover-up|big pharma|mainstream media hiding|they don't want you to know|secret|leaked documents)/i, name: "Conspiracy keywords", weight: 10 },
-      { pattern: /(anonymous sources|insider reveals|whistleblower|sources say|unnamed official)/i, name: "Anonymous sources", weight: 10 },
-      { pattern: /(share before deleted|act now|they're trying to censor|before it's too late)/i, name: "Urgency manipulation", weight: 10 },
-      { pattern: /(100% cure|miracle|destroys all|secret government|mind control|microchip)/i, name: "Extreme claims", weight: 10 },
-      { pattern: /(experts say|some say|many believe|it is said)/i, name: "Vague attributions", weight: 10 },
-      { pattern: /(you won't believe|shocking truth|they're hiding)/i, name: "Emotional manipulation", weight: 10 },
-      { pattern: /(bleach|miracle cure|anti-vaccine|dangerous health)/i, name: "Medical misinformation", weight: 10 },
-      { pattern: /(99% of|100% of|all doctors|every scientist)/i, name: "Unverifiable statistics", weight: 10 },
-      { pattern: /(without consulting|don't trust authorities|ignore experts)/i, name: "Bypass experts", weight: 10 },
+      { pattern: /(breaking|shocking|scientists don't want you to know|unbelievable|you won't believe|bombshell|explosive|jaw-dropping)/i, name: "⚠️ Sensational Language", weight: 12 },
+      { pattern: /(cover-up|big pharma|mainstream media hiding|they don't want you to know|secret|leaked documents|conspiracy|elite|cabal|deep state)/i, name: "⚠️ Conspiracy Keywords", weight: 15 },
+      { pattern: /(anonymous sources?|insider reveals?|whistleblower|sources? say|unnamed official|secret informant)/i, name: "⚠️ Anonymous Sources", weight: 13 },
+      { pattern: /(share before deleted|act now|they're trying to censor|before it's too late|hurry|limited time|going viral|must share)/i, name: "⚠️ Urgency Manipulation", weight: 14 },
+      { pattern: /(100% cure|miracle|destroys? all|secret government|mind control|microchip|never before seen|guaranteed|absolute)/i, name: "⚠️ Extreme Claims", weight: 16 },
+      { pattern: /(experts? say|studies? show|doctors? recommend|scientists? claim)(?!\s+([A-Z][a-z]+\s+){1,2}(at|from))/i, name: "⚠️ Vague Sources", weight: 11 },
+      { pattern: /(terrifying|outrageous|shocking|insane|devastating|horrifying|disgusting|appalling|criminal)/i, name: "⚠️ Emotional Manipulation", weight: 10 },
+      { pattern: /(bleach|drink urine|cure cancer|anti-vax|vaccine causes|big pharma conspiracy|natural cure all|detox cures)/i, name: "⚠️ Medical Misinformation", weight: 18 },
+      { pattern: /(99% of|all doctors|every scientist|nobody knows|they won't tell you)/i, name: "⚠️ Unverifiable Statistics", weight: 13 },
+      { pattern: /(without consulting|don't trust doctors|ignore experts|avoid hospitals|mainstream lies|do your own research)/i, name: "⚠️ Bypass Authorities", weight: 14 },
     ];
 
+    // Enhanced real news indicators
     const realIndicators = [
-      { pattern: /(dr\.|professor|phd|researcher at [a-z\s]+university)/i, name: "Specific credentials", weight: 8 },
-      { pattern: /(university|institute|agency|published in|journal of)/i, name: "Credible institutions", weight: 8 },
-      { pattern: /(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december)/i, name: "Specific dates/locations", weight: 8 },
-      { pattern: /(study|research|data|statistics|peer-reviewed|findings)/i, name: "Verifiable facts", weight: 8 },
-      { pattern: /(according to|stated|confirmed|announced)/i, name: "Balanced reporting", weight: 8 },
-      { pattern: /[A-Z][a-z]+\s[A-Z][a-z]+,\s(CEO|director|professor|researcher)/i, name: "Named sources", weight: 8 },
+      { pattern: /(Dr\.|Professor|PhD|researcher at [a-z\s]+|lead scientist|Chief|Director)\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i, name: "✓ Named Credentials", weight: 12 },
+      { pattern: /(University of|Harvard|Stanford|MIT|Johns Hopkins|Oxford|Cambridge|CDC|WHO|FDA|NIH|Reuters|Associated Press|New York Times|BBC|Nature|Science|JAMA)/i, name: "✓ Credible Institutions", weight: 14 },
+      { pattern: /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(st|nd|rd|th)?,?\s+\d{4}/i, name: "✓ Specific Dates", weight: 10 },
+      { pattern: /(published in|journal of|peer-reviewed|clinical trial|research paper|academic study|scientific method)/i, name: "✓ Academic Publications", weight: 15 },
+      { pattern: /(however|although|while|on the other hand|research suggests|evidence indicates|data shows|according to|preliminary findings)/i, name: "✓ Balanced Language", weight: 9 },
+      { pattern: /(in\s+[A-Z][a-z]+,\s+[A-Z][a-z]+|at\s+[A-Z][a-z]+\s+University|in\s+the\s+[A-Z][a-z]+\s+(region|area|city))/i, name: "✓ Specific Locations", weight: 8 },
+      { pattern: /(\d+\s+(participants|patients|subjects|respondents)|conducted|analyzed|measured|compared|randomized|controlled|sample size|methodology)/i, name: "✓ Scientific Methodology", weight: 13 },
+      { pattern: /(cited|referenced|quoted|stated|confirmed|verified|according to official)/i, name: "✓ Proper Citations", weight: 10 },
     ];
 
     let fakeScore = 0;
@@ -159,8 +163,8 @@ const Index = () => {
 
     // Add points for excessive caps
     if (upperCount >= 3) {
-      fakeScore += 10;
-      foundIndicators.push("Excessive ALL CAPS");
+      fakeScore += 12;
+      foundIndicators.push("⚠️ Excessive ALL CAPS");
     }
 
     // Check real indicators
@@ -171,11 +175,27 @@ const Index = () => {
       }
     });
 
+    // Additional quality checks
+    const wordCount = text.split(/\s+/).length;
+    const sentenceCount = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+    const avgSentenceLength = wordCount / Math.max(sentenceCount, 1);
+
+    // Bonus for reasonable article length (150-5000 words)
+    if (wordCount > 150 && wordCount < 5000) {
+      realScore += 10;
+    }
+
+    // Penalty for very short or very long sentences (common in fake news)
+    if (avgSentenceLength < 5 || avgSentenceLength > 40) {
+      fakeScore += 8;
+      foundIndicators.push("⚠️ Unusual Sentence Structure");
+    }
+
     return {
       isFake: fakeScore > realScore,
       fakeScore,
       realScore,
-      foundIndicators
+      foundIndicators: foundIndicators.slice(0, 8) // Limit to 8 most relevant indicators
     };
   };
 
@@ -196,23 +216,28 @@ const Index = () => {
       <Chatbot />
       
       {/* Header */}
-      <header className="border-b border-white/10 backdrop-blur-lg bg-white/5 animate-fade-in relative overflow-hidden">
+        <header className="border-b border-white/10 backdrop-blur-lg bg-white/5 animate-fade-in relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/5 animate-pulse-slow" />
         <div className="container mx-auto px-4 py-6 relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Sparkles className="w-8 h-8 text-accent animate-pulse" />
-                <div className="absolute inset-0 blur-xl bg-accent/50 animate-pulse" />
+                <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+                <div className="absolute inset-0 blur-xl bg-primary/50 animate-pulse" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">
+                <h1 className="text-3xl font-bold gradient-text" style={{ textShadow: '0 0 30px hsl(var(--primary) / 0.4)' }}>
                   Fake News Detector
                 </h1>
-                <p className="text-muted-foreground mt-1">AI-Powered Truth Verification</p>
+                <p className="text-muted-foreground mt-1 font-light">AI-Powered Truth Verification</p>
               </div>
             </div>
-            <Button variant="glass" size="icon" asChild>
+            <Button 
+              variant="glass" 
+              size="icon" 
+              className="hover:scale-110 transition-transform hover:glow-primary"
+              asChild
+            >
               <a
                 href="https://github.com"
                 target="_blank"
@@ -270,48 +295,66 @@ const Index = () => {
                 placeholder="Paste your news article here to verify its authenticity..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="min-h-[200px] bg-input/50 border-white/20 focus:border-accent focus:glow-primary resize-none text-base transition-all duration-300"
+                className="min-h-[200px] bg-input/50 border-white/20 focus:border-primary hover:border-primary/50 focus:ring-2 focus:ring-primary/30 resize-none text-base transition-all duration-300"
               />
               <div className="flex justify-between items-center mt-2">
-                <p className="text-sm text-muted-foreground">{text.length} characters</p>
-                <div className="flex gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {text.length} characters • {text.split(/\s+/).filter(w => w).length} words
+                </p>
+                {text.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setText(exampleArticles.fake);
-                      toast.info("Loaded fake news example");
-                    }}
+                    onClick={() => setText('')}
+                    className="text-primary hover:text-primary/80"
                   >
-                    Try Fake Example
+                    Clear
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setText(exampleArticles.real);
-                      toast.info("Loaded real news example");
-                    }}
-                  >
-                    Try Real Example
-                  </Button>
-                </div>
+                )}
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setText(exampleArticles.fake);
+                    toast.info("Loaded fake news example");
+                  }}
+                  className="flex-1 border-destructive/30 hover:bg-destructive/10 hover:border-destructive transition-all"
+                >
+                  Try Fake Example
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setText(exampleArticles.real);
+                    toast.info("Loaded real news example");
+                  }}
+                  className="flex-1 border-success/30 hover:bg-success/10 hover:border-success transition-all"
+                >
+                  Try Real Example
+                </Button>
               </div>
             </div>
 
-            <Button
+              <Button
               variant="analyze"
               size="lg"
               onClick={analyzeText}
               disabled={isAnalyzing || text.trim().length < 50}
-              className="w-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl glow-primary relative overflow-hidden group"
+              className="w-full text-lg font-semibold hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-2xl relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)',
+                boxShadow: '0 0 20px hsl(var(--primary) / 0.4)'
+              }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient-flow opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-secondary bg-[length:200%_100%] animate-gradient-flow opacity-0 group-hover:opacity-30 transition-opacity" />
               <span className="relative z-10 flex items-center gap-2 justify-center">
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Analyzing...
+                    Analyzing with AI...
                   </>
                 ) : (
                   <>
