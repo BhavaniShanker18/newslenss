@@ -8,46 +8,46 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 30% 8%;
+    --background: 230 25% 12%;
     --foreground: 210 40% 98%;
 
-    --card: 220 25% 12%;
+    --card: 230 20% 16%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 220 30% 10%;
+    --popover: 230 22% 14%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 180 85% 55%;
-    --primary-foreground: 220 30% 8%;
+    --primary: 180 90% 55%;
+    --primary-foreground: 230 25% 12%;
 
-    --secondary: 265 75% 65%;
+    --secondary: 250 80% 68%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 20% 28%;
-    --muted-foreground: 215 20% 70%;
+    --muted: 230 15% 32%;
+    --muted-foreground: 215 20% 75%;
 
-    --accent: 280 65% 60%;
+    --accent: 270 75% 65%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 348 83% 60%;
+    --destructive: 0 85% 62%;
     --destructive-foreground: 210 40% 98%;
 
-    --success: 160 84% 45%;
-    --success-foreground: 210 40% 98%;
+    --success: 150 80% 50%;
+    --success-foreground: 230 25% 12%;
 
-    --border: 220 25% 20%;
-    --input: 220 25% 15%;
-    --ring: 180 85% 55%;
+    --border: 230 20% 24%;
+    --input: 230 20% 18%;
+    --ring: 180 90% 55%;
 
     --radius: 0.75rem;
 
-    --gradient-start: 220 30% 8%;
-    --gradient-mid: 240 35% 15%;
-    --gradient-end: 265 40% 22%;
+    --gradient-start: 230 25% 12%;
+    --gradient-mid: 245 30% 18%;
+    --gradient-end: 260 35% 24%;
 
-    --neon-teal: 180 85% 55%;
-    --electric-purple: 265 75% 65%;
-    --vibrant-accent: 280 65% 60%;
+    --neon-teal: 180 90% 55%;
+    --electric-purple: 250 80% 68%;
+    --vibrant-accent: 270 75% 65%;
   }
 }
 

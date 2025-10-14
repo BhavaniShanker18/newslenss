@@ -258,18 +258,16 @@ const Index = () => {
               </div>
             </div>
 
-              <Button
-              variant="analyze"
+            <Button
               size="lg"
               onClick={analyzeText}
               disabled={isAnalyzing || text.trim().length < 50}
-              className="w-full text-lg font-semibold hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-2xl relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-lg font-semibold bg-gradient-to-r from-primary via-accent to-secondary hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-2xl relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               style={{
-                background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)',
-                boxShadow: '0 0 20px hsl(var(--primary) / 0.4)'
+                boxShadow: '0 0 30px hsl(var(--primary) / 0.5), 0 0 60px hsl(var(--accent) / 0.3)'
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-secondary bg-[length:200%_100%] animate-gradient-flow opacity-0 group-hover:opacity-30 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-secondary bg-[length:200%_100%] animate-gradient-flow opacity-0 group-hover:opacity-40 transition-opacity" />
               <span className="relative z-10 flex items-center gap-2 justify-center">
                 {isAnalyzing ? (
                   <>
