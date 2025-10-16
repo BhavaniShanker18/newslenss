@@ -28,12 +28,16 @@ import {
   Zap,
   Volume2,
   VolumeX,
+  Mic,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Chatbot } from "@/components/Chatbot";
 import { LottieAnimation } from "@/components/LottieAnimation";
 import { supabase } from "@/integrations/supabase/client";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { LanguageThemeSelector } from "@/components/LanguageThemeSelector";
 
 interface AnalysisResult {
   verdict: "fake" | "real";
@@ -64,10 +68,24 @@ const Index = () => {
     accuracy: 94.5,
   });
   const { speak, stop, isSpeaking, isSupported } = useTextToSpeech();
+  const { t } = useLanguage();
+  const { startListening, isListening, isSupported: voiceSupported } = useVoiceInput();
+
+  const handleVoiceInput = () => {
+    if (!voiceSupported) {
+      toast.error(t('voiceNotSupported'));
+      return;
+    }
+
+    startListening((transcript) => {
+      setText(transcript);
+      toast.success("Voice recognized - Text has been transcribed");
+    });
+  };
 
   const analyzeText = async () => {
     if (text.trim().length < 50) {
-      toast.error("Please enter at least 50 characters for analysis");
+      toast.error(t('minCharacters'));
       return;
     }
 
@@ -99,8 +117,8 @@ const Index = () => {
 
       // Speak the result
       if (isSupported && data.explanation) {
-        const verdictText = data.verdict === 'fake' ? 'fake news' : 'real news';
-        const speechText = `Analysis complete. This article appears to be ${verdictText} with ${data.confidence} percent confidence. ${data.explanation}`;
+        const verdictText = data.verdict === 'fake' ? t('fakeNews') : t('realNews');
+        const speechText = `${verdictText}. ${data.confidence} ${t('confidence')}. ${data.explanation}`;
         speak(speechText);
       }
 
@@ -109,7 +127,7 @@ const Index = () => {
         document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
 
-      toast.success(`Analysis complete: ${data.verdict === 'fake' ? 'FAKE' : 'REAL'} news detected`);
+      toast.success(`${t('analyzing')} ${data.verdict === 'fake' ? t('fakeNews') : t('realNews')}`);
     } catch (error: any) {
       console.error('Analysis error:', error);
       toast.error(error.message || "Failed to analyze the article. Please try again.");
@@ -147,26 +165,29 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold gradient-text" style={{ textShadow: '0 0 30px hsl(var(--primary) / 0.4)' }}>
-                  Fake News Detector
+                  {t('appTitle')}
                 </h1>
-                <p className="text-muted-foreground mt-1 font-light">AI-Powered Truth Verification</p>
+                <p className="text-muted-foreground mt-1 font-light">{t('tagline')}</p>
               </div>
             </div>
-            <Button 
-              variant="glass" 
-              size="icon" 
-              className="hover:scale-110 transition-transform hover:glow-primary"
-              asChild
-            >
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="GitHub Repository"
+            <div className="flex items-center gap-3">
+              <LanguageThemeSelector />
+              <Button 
+                variant="glass" 
+                size="icon" 
+                className="hover:scale-110 transition-transform hover:glow-primary"
+                asChild
               >
-                <Github className="w-5 h-5" />
-              </a>
-            </Button>
+                <a
+                  href="https://github.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="GitHub Repository"
+                >
+                  <Github className="w-5 h-5" />
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -209,14 +230,30 @@ const Index = () => {
             <div>
               <label className="text-lg font-semibold mb-2 block flex items-center gap-2">
                 <FileText className="w-5 h-5 text-accent" />
-                Enter News Article
+                {t('pasteNews').split('...')[0]}
               </label>
-              <Textarea
-                placeholder="Paste your news article here to verify its authenticity..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="min-h-[200px] bg-input/50 border-white/20 focus:border-primary hover:border-primary/50 focus:ring-2 focus:ring-primary/30 resize-none text-base transition-all duration-300"
-              />
+              <div className="relative">
+                <Textarea
+                  placeholder={t('pasteNews')}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="min-h-[200px] bg-input/50 border-white/20 focus:border-primary hover:border-primary/50 focus:ring-2 focus:ring-primary/30 resize-none text-base transition-all duration-300 pr-32"
+                />
+                {voiceSupported && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleVoiceInput}
+                    disabled={isListening}
+                    className={`absolute bottom-3 right-3 ${
+                      isListening ? 'animate-pulse-glow border-destructive' : ''
+                    }`}
+                  >
+                    <Mic className={`w-4 h-4 mr-1 ${isListening ? 'text-destructive' : ''}`} />
+                    {isListening ? t('listening') : t('voiceInput')}
+                  </Button>
+                )}
+              </div>
               <div className="flex justify-between items-center mt-2">
                 <p className="text-sm text-muted-foreground">
                   {text.length} characters • {text.split(/\s+/).filter(w => w).length} words
@@ -272,12 +309,12 @@ const Index = () => {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Analyzing with AI...
+                    {t('analyzing')}
                   </>
                 ) : (
                   <>
                     <Brain className="w-5 h-5" />
-                    Analyze News Article
+                    {t('analyzeButton')}
                   </>
                 )}
               </span>
@@ -302,34 +339,36 @@ const Index = () => {
                     ) : (
                       <ShieldCheck className="w-12 h-12 text-success" />
                     )}
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={result.verdict === "fake" ? "destructive" : "default"}
-                        className={`text-lg px-4 py-1 ${
-                          result.verdict === "real" ? "bg-success hover:bg-success/90" : ""
-                        }`}
-                      >
-                        {result.verdict === "fake" ? "⚠️ FAKE NEWS" : "✓ REAL NEWS"}
-                      </Badge>
-                      {isSupported && result.explanation && (
-                        <Button
-                          onClick={() => {
-                            if (isSpeaking) {
-                              stop();
-                            } else {
-                              const verdictText = result.verdict === 'fake' ? 'fake news' : 'real news';
-                              speak(`This article appears to be ${verdictText} with ${result.confidence} percent confidence. ${result.explanation}`);
-                            }
-                          }}
-                          variant="glass"
-                          size="sm"
-                          className="hover:scale-110 transition-transform"
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={result.verdict === "fake" ? "destructive" : "default"}
+                          className={`text-lg px-4 py-1 ${
+                            result.verdict === "real" ? "bg-success hover:bg-success/90" : ""
+                          }`}
                         >
-                          {isSpeaking ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
-                          {isSpeaking ? 'Stop' : 'Listen'}
-                        </Button>
-                      )}
-                      <p className="text-sm text-muted-foreground mt-2">
+                          {result.verdict === "fake" ? `⚠️ ${t('fakeNews')}` : `✓ ${t('realNews')}`}
+                        </Badge>
+                        {isSupported && result.explanation && (
+                          <Button
+                            onClick={() => {
+                              if (isSpeaking) {
+                                stop();
+                              } else {
+                                const verdictText = result.verdict === 'fake' ? t('fakeNews') : t('realNews');
+                                speak(`${verdictText}. ${result.confidence} ${t('confidence')}. ${result.explanation}`);
+                              }
+                            }}
+                            variant="glass"
+                            size="sm"
+                            className="hover:scale-110 transition-transform"
+                          >
+                            {isSpeaking ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
+                            {isSpeaking ? 'Stop' : 'Listen'}
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
                         Risk Level: <span className="font-semibold capitalize">{result.riskLevel}</span>
                       </p>
                     </div>
@@ -339,7 +378,7 @@ const Index = () => {
                     <div className="mt-4 p-4 bg-card/50 border border-white/10 rounded-xl">
                       <h4 className="font-semibold mb-2 text-primary flex items-center gap-2">
                         <Brain className="w-4 h-4" />
-                        AI Analysis:
+                        {t('aiExplanation')}:
                       </h4>
                       <p className="text-sm text-muted-foreground leading-relaxed">{result.explanation}</p>
                     </div>
@@ -347,7 +386,7 @@ const Index = () => {
 
                   <div className="grid grid-cols-2 gap-4 mt-6">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Confidence Score</p>
+                      <p className="text-sm text-muted-foreground mb-2">{t('confidence')}</p>
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
                           <Progress value={result.confidence} className="h-2" />
@@ -356,7 +395,7 @@ const Index = () => {
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Credibility Meter</p>
+                      <p className="text-sm text-muted-foreground mb-2">{t('credibilityScore')}</p>
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
                           <Progress value={result.credibility} className="h-2" />
@@ -383,13 +422,13 @@ const Index = () => {
               <Card className="glass p-6 hover:scale-105 transition-transform duration-300">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-accent" />
-                  Text Statistics
+                  {t('textStats')}
                 </h3>
                 <div className="space-y-3">
                   {result.stats && (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Word Count</span>
+                        <span className="text-muted-foreground">{t('wordCount')}</span>
                         <span className="font-semibold">{result.stats.wordCount}</span>
                       </div>
                       <div className="flex justify-between">
@@ -397,7 +436,7 @@ const Index = () => {
                         <span className="font-semibold">{result.stats.sentenceCount}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Avg Sentence Length</span>
+                        <span className="text-muted-foreground">{t('avgWordLength')}</span>
                         <span className="font-semibold">{result.stats.avgSentenceLength} words</span>
                       </div>
                     </>
@@ -420,117 +459,69 @@ const Index = () => {
               </Card>
             </div>
 
-            {/* Warnings/Insights */}
-            <Card className="glass p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                {result.verdict === "fake" ? "Warning Signs Detected" : "Credibility Markers"}
-              </h3>
-              <ul className="space-y-2">
-                {result.warnings.map((warning, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span
-                      className={`mt-1 ${result.verdict === "fake" ? "text-destructive" : "text-success"}`}
-                    >
-                      •
-                    </span>
-                    <span className="text-muted-foreground">{warning}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            {result.warnings.length > 0 && (
+              <Card className="glass p-6 border-2 border-destructive/50">
+                <h3 className="text-lg font-semibold mb-4 text-destructive flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5" />
+                  Warning Signs Detected
+                </h3>
+                <ul className="space-y-2">
+                  {result.warnings.map((warning, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="text-destructive mt-1">•</span>
+                      <span className="text-muted-foreground">{warning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
           </div>
         )}
 
         {/* How It Works Section */}
-        <Card className="glass p-8 mt-12">
+        <Card className="glass p-8 mt-12 animate-fade-in">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Brain className="w-6 h-6 text-accent" />
+            <Database className="w-6 h-6 text-primary" />
             How It Works
           </h2>
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="preprocessing" className="border-white/10">
-              <AccordionTrigger className="hover:text-accent">
-                1. Data Preprocessing (7 Steps)
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg hover:text-primary transition-colors">
+                🧠 Advanced NLP Analysis
               </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Our advanced preprocessing pipeline includes tokenization, normalization, stop word removal,
-                stemming, lemmatization, entity recognition, and feature extraction to prepare the text for
-                analysis.
+              <AccordionContent className="text-muted-foreground leading-relaxed">
+                Our AI model uses state-of-the-art natural language processing techniques to analyze
+                text patterns, linguistic markers, and semantic structures that are commonly
+                associated with fake news articles.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="features" className="border-white/10">
-              <AccordionTrigger className="hover:text-accent">
-                2. Hybrid Feature Extraction (TF-IDF + Word2Vec)
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg hover:text-primary transition-colors">
+                📊 Multi-Model Verification
               </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                We combine TF-IDF for term importance and Word2Vec for semantic understanding, creating a rich
-                feature space that captures both statistical and contextual patterns in the text.
+              <AccordionContent className="text-muted-foreground leading-relaxed">
+                We employ an ensemble of machine learning models trained on diverse datasets to
+                provide robust predictions. This multi-layered approach ensures higher accuracy and
+                reduces false positives.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="classification" className="border-white/10">
-              <AccordionTrigger className="hover:text-accent">
-                3. Machine Learning Classification
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg hover:text-primary transition-colors">
+                🔍 Pattern Recognition
               </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Multiple ML models (Random Forest, Gradient Boosting, Neural Networks) analyze the features to
-                detect patterns indicative of fake news, with ensemble voting for maximum accuracy.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="data" className="border-white/10">
-              <AccordionTrigger className="hover:text-accent">
-                4. Training Data Sources
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Our model is trained on 4 major datasets: LIAR, ISOT Fake News, FakeNewsNet, and COVID-19 Fake
-                News, encompassing over 100,000 labeled articles across various domains and time periods.
+              <AccordionContent className="text-muted-foreground leading-relaxed">
+                The system identifies common fake news indicators such as sensationalism, emotional
+                manipulation, conspiracy language, and questionable source credibility markers.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
         </Card>
-
-        {/* Technology Stack */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in-up">
-          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow-primary">
-            <Database className="w-8 h-8 text-primary mx-auto mb-2 animate-pulse" />
-            <p className="font-semibold">Big Data</p>
-            <p className="text-xs text-muted-foreground mt-1">100K+ Articles</p>
-          </Card>
-          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow-accent">
-            <Brain className="w-8 h-8 text-accent mx-auto mb-2 animate-pulse" />
-            <p className="font-semibold">Deep Learning</p>
-            <p className="text-xs text-muted-foreground mt-1">Neural Networks</p>
-          </Card>
-          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow">
-            <Zap className="w-8 h-8 text-secondary mx-auto mb-2 animate-pulse" />
-            <p className="font-semibold">Real-time</p>
-            <p className="text-xs text-muted-foreground mt-1">Instant Analysis</p>
-          </Card>
-          <Card className="glass p-6 text-center hover:scale-105 transition-all duration-300 hover:glow-success">
-            <TrendingUp className="w-8 h-8 text-success mx-auto mb-2 animate-pulse" />
-            <p className="font-semibold">High Accuracy</p>
-            <p className="text-xs text-muted-foreground mt-1">94.5% Success</p>
-          </Card>
-        </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-white/10 backdrop-blur-lg bg-white/5 mt-20">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              Powered by AI | <span className="font-semibold text-accent">SIH Project 2025</span>
-            </p>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-accent transition-colors"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-            </div>
-          </div>
+        <div className="container mx-auto px-4 py-6 text-center text-muted-foreground">
+          <p>© 2025 NewsLens - AI-Powered Fake News Detection | Built with ❤️ for a more informed world</p>
         </div>
       </footer>
     </div>
